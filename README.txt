@@ -40,7 +40,7 @@ Once you have the code and everything is set up , press run on the button or F5 
 
 The window will open leading you to main start.
 The main start includes 4 buttons : 
-Start Game - to start 
+Start Game - to start  >>> You then proceed to new window and select 3 levels : Easy, Medium, Hard based on the score you have to get
 Music Toggle Button - to turn it on or off
 Sounds Toggle Button - to turn it on or off
 Exit Game - simply ends the program
