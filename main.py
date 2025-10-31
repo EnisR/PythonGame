@@ -9,9 +9,11 @@ floor = Rect((0, HEIGHT - 10), (WIDTH, 10)) # the platform to make the character
 
 #  Game States
 MENU = "menu"
+LEVEL_SELECT = "level_select"  # new screen for choosing difficulty
 PLAYING = "playing"
 PAUSED = "paused"
 GAME_OVER = "game_over"
+WIN = "win"  # added to show when user completes all enemies
 game_state = MENU
 
 # #Music
@@ -178,6 +180,12 @@ menu_buttons = {
     "exit": Rect((WIDTH//2 - 100, 360), (200, 50))
 }
 
+level_buttons = {  # level select screen
+    "easy": Rect((WIDTH//2 - 100, 180), (200, 50)),
+    "medium": Rect((WIDTH//2 - 100, 260), (200, 50)),
+    "hard": Rect((WIDTH//2 - 100, 340), (200, 50))
+}
+
 game_over_buttons = {
     "restart": Rect((WIDTH//2 - 200, 280), (150, 50)),
     "exit": Rect((WIDTH//2 + 50, 280), (150, 50))
@@ -190,6 +198,9 @@ enemies = []
 enemy_spawn_timer = 0
 ENEMY_SPAWN_INTERVAL = 120
 score = 0
+goal_score = 15  # default, changes by level
+
+# Game now contains 3 levels based on the number of enemies eliminated
 
 # Draw
 def draw_buttons():
@@ -203,6 +214,12 @@ def draw_buttons():
             label = name.replace("_", " ").title()
         screen.draw.text(label, center=rect.center, fontsize=40, color="white")
 
+def draw_level_buttons():
+    for name, rect in level_buttons.items():
+        screen.draw.filled_rect(rect, "gray")
+        label = name.title()
+        screen.draw.text(label, center=rect.center, fontsize=40, color="white")
+
 def draw_game_over_buttons():
     for name, rect in game_over_buttons.items():
         screen.draw.filled_rect(rect, "gray")
@@ -214,6 +231,9 @@ def draw():
     if game_state == MENU:
         screen.draw.text("Urban Shooter", center=(WIDTH//2, HEIGHT//2 - 100), fontsize=60, color="white")
         draw_buttons()
+    elif game_state == LEVEL_SELECT:
+        screen.draw.text("Select Level", center=(WIDTH//2, 100), fontsize=60, color="white")
+        draw_level_buttons()
     elif game_state == PLAYING:
         screen.blit("background", (0,0))
         player.actor.draw()
@@ -221,7 +241,7 @@ def draw():
             b.actor.draw()
         for e in enemies:
             e.actor.draw()
-        screen.draw.text(f"Score: {score}", (WIDTH - 200, 20), fontsize=40, color="white")
+        screen.draw.text(f"Score: {score}/{goal_score}", (WIDTH - 250, 20), fontsize=40, color="white")
     elif game_state == PAUSED:
         screen.blit("background", (0,0))
         player.actor.draw()
@@ -229,12 +249,17 @@ def draw():
             b.actor.draw()
         for e in enemies:
             e.actor.draw()
-        screen.draw.text(f"Score: {score}", (WIDTH - 200, 20), fontsize=40, color="white")
+        screen.draw.text(f"Score: {score}/{goal_score}", (WIDTH - 250, 20), fontsize=40, color="white")
         screen.draw.text("PAUSED", center=(WIDTH//2, HEIGHT//2), fontsize=80, color="red")
     elif game_state == GAME_OVER:
         screen.blit("background", (0, 0))
         screen.draw.text("GAME OVER", center=(WIDTH // 2, HEIGHT // 2 - 50), fontsize=80, color="red")
         screen.draw.text(f"Score: {score}", center=(WIDTH // 2, HEIGHT // 2 + 50), fontsize=50, color="white")
+        draw_game_over_buttons()
+    elif game_state == WIN:
+        screen.blit("background", (0, 0))
+        screen.draw.text("YOU WIN!", center=(WIDTH // 2, HEIGHT // 2 - 50), fontsize=80, color="green")
+        screen.draw.text(f"Final Score: {score}", center=(WIDTH // 2, HEIGHT // 2 + 50), fontsize=50, color="white")
         draw_game_over_buttons()
 
 # Update - checking the enemies in game, the score status as well as game status if playing or lost
@@ -253,7 +278,7 @@ def update():
     enemy_spawn_timer += 1
     if enemy_spawn_timer >= ENEMY_SPAWN_INTERVAL:
         enemy_spawn_timer = 0
-        if random.random() < 0.5:
+        if random.random() < 0.7:  # slightly more left-side enemies
             enemies.append(Enemy())
         else:
             enemies.append(Bandit2())
@@ -268,6 +293,8 @@ def update():
                 bullets.remove(b)
                 enemies.remove(e)
                 score += 2 if isinstance(e, Bandit2) else 1
+                if score >= goal_score:
+                    game_state = WIN
                 break
 
         player_on_floor = abs(player.actor.y + player.actor.height/2 - floor.top) < 1
@@ -294,28 +321,33 @@ def on_key_down(key):
 
 #Mouse
 def on_mouse_down(pos):
-    global game_state, score, bullets, enemies, player, sounds_on
+    global game_state, score, bullets, enemies, player, sounds_on, goal_score
     if game_state == MENU:
         if menu_buttons["start"].collidepoint(pos):
-            game_state = PLAYING
-            score = 0
-            bullets.clear()
-            enemies.clear()
+            game_state = LEVEL_SELECT
         elif menu_buttons["music"].collidepoint(pos):
             toggle_music()
         elif menu_buttons["sounds"].collidepoint(pos):
             sounds_on = not sounds_on
         elif menu_buttons["exit"].collidepoint(pos):
             exit()
-    elif game_state == GAME_OVER:
+    elif game_state == LEVEL_SELECT:
+        if level_buttons["easy"].collidepoint(pos):
+            goal_score = 15
+        elif level_buttons["medium"].collidepoint(pos):
+            goal_score = 25
+        elif level_buttons["hard"].collidepoint(pos):
+            goal_score = 50
+        else:
+            return
+        score = 0
+        bullets.clear()
+        enemies.clear()
+        game_state = PLAYING
+    elif game_state in [GAME_OVER, WIN]:
         if game_over_buttons["restart"].collidepoint(pos):
-            game_state = PLAYING
-            score = 0
-            bullets.clear()
-            enemies.clear()
-            player.actor.pos = (WIDTH // 2, HEIGHT - 40)
-            player.jumping = False
-            player.velocity_y = 0
+            game_state = LEVEL_SELECT
         elif game_over_buttons["exit"].collidepoint(pos):
             exit()
+
 pgzrun.go()
